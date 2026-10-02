@@ -101,4 +101,15 @@ router.get('/mine', auth(), async (req, res) => {
   res.json(orders);
 });
 
+router.get('/shipping-quote', async (req, res) => {
+  try {
+    const subtotal = Number(req.query.subtotal) || 0;
+    const city = req.query.city || '';
+    const shipping = await calcShipping(city, subtotal);
+    res.json({ shipping, subtotal, total: subtotal + shipping });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

@@ -63,4 +63,62 @@ router.get('/me', require('../middleware/auth').auth(), async (req, res) => {
   res.json(user);
 });
 
+router.patch('/me', require('../middleware/auth').auth(), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const { name, phone, gender, dateOfBirth, preferences, notes } = req.body;
+    if (name !== undefined) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (gender !== undefined) user.gender = gender;
+    if (dateOfBirth !== undefined) user.dateOfBirth = dateOfBirth;
+    if (preferences) user.preferences = { ...user.preferences?.toObject?.() || user.preferences, ...preferences };
+    if (notes !== undefined) user.notes = notes;
+    await user.save();
+    res.json(await User.findById(user._id).select('-passwordHash'));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/me/addresses', require('../middleware/auth').auth(), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (req.body.isDefault) user.addresses.forEach((a) => { a.isDefault = false; });
+    user.addresses.push(req.body);
+    await user.save();
+    res.status(201).json(await User.findById(user._id).select('-passwordHash'));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.put('/me/addresses/:addressId', require('../middleware/auth').auth(), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    const addr = user.addresses.id(req.params.addressId);
+    if (!addr) return res.status(404).json({ message: 'Address not found' });
+    if (req.body.isDefault) user.addresses.forEach((a) => { a.isDefault = false; });
+    Object.assign(addr, req.body);
+    await user.save();
+    res.json(await User.findById(user._id).select('-passwordHash'));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete('/me/addresses/:addressId', require('../middleware/auth').auth(), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    const addr = user.addresses.id(req.params.addressId);
+    if (!addr) return res.status(404).json({ message: 'Address not found' });
+    user.addresses.pull(req.params.addressId);
+    await user.save();
+    res.json(await User.findById(user._id).select('-passwordHash'));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
